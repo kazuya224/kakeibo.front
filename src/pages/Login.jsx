@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import api from '../service/api';
 
 function Login({ onLoginSuccess, setView }) {
   const [email, setEmail] = useState('');
@@ -9,13 +10,10 @@ function Login({ onLoginSuccess, setView }) {
     e.preventDefault();
     setError('');
 
-    // 本来はここでバックエンドのAPIを叩きます
-    // 例: axios.post('/auth/login', { email, password })
-    
-    // MVP開発中やテスト用の仮実装
-    if (email === 'test@example.com' && password === 'password') {
-      onLoginSuccess(); // ログイン成功をApp.jsxに伝える
-    } else {
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      onLoginSuccess();
+    } catch (error) {
       setError('メールアドレスまたはパスワードが正しくありません');
     }
   };
