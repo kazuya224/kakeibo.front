@@ -1,32 +1,153 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import SummaryCard from '../components/SummaryCard';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-function TransactionForm({ view, setView, selectedDate, transactions, categories, setTransactions }) {
-  if (view === 'form') {
-    return (
-      <div className="max-w-md mx-auto p-4 bg-slate-50 min-h-screen">
-        <div className="flex justify-between items-center mb-4">
-          <button onClick={() => setView('calendar')} className="text-emerald-600 font-bold">← 戻る</button>
-          <button onClick={() => setView('category_settings')} className="text-xs bg-white border px-3 py-1 rounded-full text-slate-500">カテゴリ設定</button>
-        </div>
-        <SummaryCard summary={dailySummary} label={`${selectedDate} の合計`} />
-        <form onSubmit={handleSubmitTransaction} className="bg-white p-6 rounded-2xl shadow-sm space-y-6 mb-6">
-          <div className="flex bg-slate-100 p-1 rounded-xl">
-            {['0', '1'].map(f => (
-              <button key={f} type="button" onClick={() => handleTypeChange(f)} className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${typeFlg === f ? `bg-white shadow ${f === '0' ? 'text-red-500' : 'text-blue-500'}` : 'text-gray-400'}`}>
-                {f === '0' ? '支出' : '収入'}
-              </button>
-            ))}
-          </div>
-          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full border-b-2 p-2 text-2xl font-bold outline-none" placeholder="¥ 0" autoFocus />
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="w-full bg-slate-50 p-3 rounded-xl outline-none font-medium">
-            {categories.filter(c => c.type_flg === typeFlg).map(c => <option key={c.category_id} value={c.category_id}>{c.category_name}</option>)}
-          </select>
-          <button className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg ${typeFlg === '0' ? 'bg-red-500' : 'bg-blue-500'}`}>保存</button>
-        </form>
+function TransactionForm({ selectedDate, setTransactions }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  console.log("Locationオブジェクト:", location);
+  console.log("受け取ったstate:", location.state);
+  const categories = location.state?.categories || [];
+  const transactions = location.state?.transactions || [];
+  const [amount, setAmount] = useState('');
+  const [typeFlg, setTypeFlg] = useState('0');
+  const [categoryId, setCategoryId] = useState('');
+  // ローディング状態を管理（二重送信防止）
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  console.log(categories);
+
+  const dailySummary = useMemo(() => {
+    const dayTrans = transactions.filter(t => t.date === selectedDate);
+    const income = dayTrans
+      .filter(t => categories.find(c => c.category_id === t.category_id)?.type_flg === '1')
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const expense = dayTrans
+      .filter(t => categories.find(c => c.category_id === t.category_id)?.type_flg === '0')
+      .reduce((s, t) => s + Number(t.amount), 0);
+    return { income, expense, balance: income - expense };
+  }, [transactions, categories, selectedDate]);
+
+  useEffect(() => {
+    const firstCat = categories.find(c => c.type_flg === typeFlg);
+    if (firstCat) setCategoryId(firstCat.category_id);
+  }, [typeFlg, categories]);
+
+  // --- API送信処理 ---
+  const handleSubmitTransaction = async (e) => {
+    e.preventDefault();
+    if (!amount || !categoryId || isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    const requestBody = {
+      category_id: categoryId,
+      date: selectedDate,
+      amount: parseInt(amount, 10),
+      type: typeFlg
+    };
+
+    try {
+      const response = await fetch('/transaction', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        console.log("レスポンス", response)
+        throw new Error('APIリクエストに失敗しました');
+      }
+
+      const data = await response.json();
+
+      // レスポンスに含まれる情報を元にローカルの状態を更新
+      // data: { response_status, transaction_id, category_id, date, amount }
+      if (data.response_status === 'success' || response.ok) {
+        const newTransaction = {
+          id: data.transaction_id, // サーバーから発行されたID
+          date: data.date,
+          amount: data.amount,
+          category_id: data.category_id
+        };
+
+        setTransactions(prev => [...prev, newTransaction]);
+        navigate('/calendar'); 
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('保存中にエラーが発生しました');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto p-4 bg-slate-50 min-h-screen">
+      <div className="flex justify-between items-center mb-4">
+        <button onClick={() => navigate('/')} className="text-emerald-600 font-bold" disabled={isSubmitting}>← 戻る</button>
+        <button onClick={() => navigate('/settings')} className="text-xs bg-white border px-3 py-1 rounded-full text-slate-500">カテゴリ設定</button>
       </div>
-    );
-  }
+
+      <SummaryCard summary={dailySummary} label={`${selectedDate} の合計`} />
+
+      <form onSubmit={handleSubmitTransaction} className="bg-white p-6 rounded-2xl shadow-sm space-y-6 mb-6">
+        <div className="flex bg-slate-100 p-1 rounded-xl">
+          {['0', '1'].map(f => (
+            <button 
+              key={f} 
+              type="button" 
+              onClick={() => setTypeFlg(f)} 
+              className={`flex-1 py-2 rounded-lg text-sm font-bold transition ${
+                typeFlg === f 
+                  ? `bg-white shadow ${f === '0' ? 'text-red-500' : 'text-blue-500'}` 
+                  : 'text-gray-400'
+              }`}
+            >
+              {f === '0' ? '支出' : '収入'}
+            </button>
+          ))}
+        </div>
+
+        <input 
+          type="number" 
+          value={amount} 
+          onChange={(e) => setAmount(e.target.value)} 
+          className="w-full border-b-2 p-2 text-2xl font-bold outline-none" 
+          placeholder="¥ 0" 
+          disabled={isSubmitting}
+        />
+
+        <select 
+          value={categoryId} 
+          onChange={(e) => setCategoryId(e.target.value)}
+          className="w-full bg-slate-50 p-3 rounded-xl outline-none font-medium"
+          disabled={isSubmitting}
+        >
+          {categories
+            .filter(c => c.type === typeFlg) // type_flg ではなく type
+            .map(c => (
+              <option key={c.categoryId} value={c.categoryId}> {/* category_id ではなく categoryId */}
+                {c.name} {/* category_name ではなく name */}
+              </option>
+            ))
+          }
+        </select>
+
+        <button 
+          type="submit"
+          disabled={isSubmitting}
+          className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg transition ${
+            isSubmitting ? 'bg-slate-300' : (typeFlg === '0' ? 'bg-red-500' : 'bg-blue-500')
+          }`}
+        >
+          {isSubmitting ? '送信中...' : '保存'}
+        </button>
+      </form>
+    </div>
+  );
 }
 
 export default TransactionForm;

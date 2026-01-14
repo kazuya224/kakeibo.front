@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom'; // URL遷移のために追加
+import api from '../service/api'; // API通信のために追加
 
-function Signup({ onSignupSuccess, setView }) {
+function Signup({ onSignupSuccess }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate(); // navigate関数を定義
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -17,14 +20,21 @@ function Signup({ onSignupSuccess, setView }) {
       return;
     }
 
-    // 本来はここでバックエンドのAPIを叩きます
-    // axios.post('/auth/signup', { name, email, password })
-    
-    console.log("Signup attempt:", { name, email });
-    
-    // 仮の成功処理
-    alert("登録が完了しました！ログインしてください。");
-    setView('login'); 
+    try {
+      // 1. 実際にバックエンドのAPIを叩く
+      // エンドポイントはご自身のバックエンド（/auth/signup など）に合わせてください
+      await api.post('/auth/signup', { name, email, password });
+      
+      alert("登録が完了しました！ログインしてください。");
+      
+      // 2. 登録成功後、ログイン画面へ遷移させる
+      navigate('/login'); 
+      
+    } catch (err) {
+      // APIからエラーが返ってきた場合
+      const message = err.response?.data?.message || '登録に失敗しました。もう一度お試しください。';
+      setError(message);
+    }
   };
 
   return (
@@ -87,12 +97,13 @@ function Signup({ onSignupSuccess, setView }) {
         </button>
       </form>
 
-      <button 
-        onClick={() => setView('login')} 
-        className="mt-6 text-sm text-slate-400 font-bold text-center underline"
+      {/* onClickの代わりに Link を使ってURLを "/login" に変更 */}
+      <Link 
+        to="/login" 
+        className="mt-6 text-sm text-slate-400 font-bold text-center underline block w-full"
       >
         既にアカウントをお持ちの方はこちら
-      </button>
+      </Link>
     </div>
   );
 }

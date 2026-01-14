@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import CalendarView from './pages/CalendarView';
 import TransactionForm from './pages/TransactionForm';
 import CategorySettings from './pages/CategorySettings';
@@ -7,9 +8,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 
 function App() {
-  // --- 1. 状態管理（各ページで共有するデータ） ---
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [view, setView] = useState('calendar'); 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState('');
   const [transactions, setTransactions] = useState([]);
@@ -24,7 +23,7 @@ function App() {
     { category_id: '5', category_name: '臨時収入', type_flg: '1' },
   ]);
 
-  // --- 2. 計算ロジック（useMemo） ---
+  // --- 計算ロジック (useMemo) はそのまま ---
   const monthlySummary = useMemo(() => {
     const yearMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
     const monthlyTrans = transactions.filter(t => t.date.startsWith(yearMonth));
@@ -53,7 +52,6 @@ function App() {
     return days;
   }, [currentDate]);
 
-  // --- 3. ハンドラー関数 ---
   const handleTypeChange = (newType) => {
     setTypeFlg(newType);
     const firstAvailable = categories.find(c => c.type_flg === newType);
@@ -65,54 +63,56 @@ function App() {
     if (!amount) return;
     setTransactions([...transactions, { transaction_id: Date.now(), date: selectedDate, amount: Number(amount), category_id: categoryId }]);
     setAmount('');
-    setView('calendar');
+    // ここで遷移させる場合は useNavigate を使う（後述）
   };
 
-  // --- 4. 画面レンダリング（条件分岐） ---
-  // 1. 未ログインなら、ログイン画面（または新規登録画面）を強制的に表示
-  if (!isLoggedIn) {
-    return (
-      <Login 
-        onLoginSuccess={() => setIsLoggedIn(true)} 
-        setView={setView} // signup画面への切り替え用
-      />
-    );
-  }
-
-  // 2. ログイン後は、通常のアプリケーション画面を表示
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      {view === 'calendar' && (
-        <CalendarView 
-          currentDate={currentDate} setCurrentDate={setCurrentDate}
-          calendarDays={calendarDays} transactions={transactions}
-          categories={categories} monthlySummary={monthlySummary}
-          setSelectedDate={setSelectedDate} setView={setView}
-        />
-      )}
-      {view === 'form' && (
-        <TransactionForm 
-          selectedDate={selectedDate} dailySummary={dailySummary}
-          typeFlg={typeFlg} handleTypeChange={handleTypeChange}
-          amount={amount} setAmount={setAmount}
-          categoryId={categoryId} setCategoryId={setCategoryId}
-          categories={categories} handleSubmitTransaction={handleSubmitTransaction}
-          setView={setView}
-        />
-      )}
-      {view === 'history' && (
-        <History transactions={transactions} categories={categories} setView={setView} />
-      )}
-      {view === 'category_settings' && (
-        <CategorySettings categories={categories} setCategories={setCategories} typeFlg={typeFlg} setView={setView} />
-      )}
+    <Router>
+      <div className="min-h-screen bg-slate-50 pb-20">
+        <Routes>
+          {/* 未ログイン時のルート */}
+          {!isLoggedIn ? (
+            <>
+              <Route path="/login" element={<Login onLoginSuccess={() => setIsLoggedIn(true)} />} />
+              <Route path="/signup" element={<Signup onSignupSuccess={() => setIsLoggedIn(true)} />} />
+              <Route path="*" element={<Navigate to="/login" />} />
+            </>
+          ) : (
+            <>
+              {/* ログイン後のルート */}
+              <Route path="/calendar" element={
+                <CalendarView 
+                  currentDate={currentDate} setCurrentDate={setCurrentDate}
+                  calendarDays={calendarDays} transactions={transactions}
+                  categories={categories} monthlySummary={monthlySummary}
+                  setSelectedDate={setSelectedDate}
+                />
+              } />
+              <Route path="/form" element={
+                <TransactionForm 
+                  selectedDate={selectedDate} dailySummary={dailySummary}
+                  typeFlg={typeFlg} handleTypeChange={handleTypeChange}
+                  amount={amount} setAmount={setAmount}
+                  categoryId={categoryId} setCategoryId={setCategoryId}
+                  categories={categories} handleSubmitTransaction={handleSubmitTransaction}
+                />
+              } />
+              <Route path="/history" element={<History transactions={transactions} categories={categories} />} />
+              <Route path="/settings" element={<CategorySettings categories={categories} setCategories={setCategories} typeFlg={typeFlg} />} />
+              <Route path="/" element={<Navigate to="/calendar" />} />
+            </>
+          )}
+        </Routes>
 
-      {/* フッターメニュー */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-3 max-w-md mx-auto">
-        <button onClick={() => setView('calendar')} className={view === 'calendar' ? 'text-emerald-600 font-bold' : 'text-slate-400'}>カレンダー</button>
-        <button onClick={() => setView('history')} className={view === 'history' ? 'text-emerald-600 font-bold' : 'text-slate-400'}>履歴</button>
-      </nav>
-    </div>
+        {/* ログイン時のみメニューを表示 */}
+        {isLoggedIn && (
+          <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-3 max-w-md mx-auto">
+            <Link to="/calendar" className="text-emerald-600 font-bold">カレンダー</Link>
+            <Link to="/history" className="text-slate-400">履歴</Link>
+          </nav>
+        )}
+      </div>
+    </Router>
   );
 }
 
