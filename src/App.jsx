@@ -91,6 +91,7 @@ function App() {
               <Route path="/form" element={
                 <TransactionForm 
                   selectedDate={selectedDate} dailySummary={dailySummary}
+                  setTransactions={setTransactions}
                   typeFlg={typeFlg} handleTypeChange={handleTypeChange}
                   amount={amount} setAmount={setAmount}
                   categoryId={categoryId} setCategoryId={setCategoryId}

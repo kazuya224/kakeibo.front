@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import SummaryCard from '../components/SummaryCard';
+import api from '../service/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 function TransactionForm({ selectedDate, setTransactions }) {
   const navigate = useNavigate();
   const location = useLocation();
-  console.log("Locationオブジェクト:", location);
-  console.log("受け取ったstate:", location.state);
   const categories = location.state?.categories || [];
   const transactions = location.state?.transactions || [];
   const [amount, setAmount] = useState('');
@@ -14,7 +13,6 @@ function TransactionForm({ selectedDate, setTransactions }) {
   const [categoryId, setCategoryId] = useState('');
   // ローディング状態を管理（二重送信防止）
   const [isSubmitting, setIsSubmitting] = useState(false);
-  console.log(categories);
 
   const dailySummary = useMemo(() => {
     const dayTrans = transactions.filter(t => t.date === selectedDate);
@@ -28,8 +26,8 @@ function TransactionForm({ selectedDate, setTransactions }) {
   }, [transactions, categories, selectedDate]);
 
   useEffect(() => {
-    const firstCat = categories.find(c => c.type_flg === typeFlg);
-    if (firstCat) setCategoryId(firstCat.category_id);
+    const firstCat = categories.find(c => c.type === typeFlg);
+    if (firstCat) setCategoryId(firstCat.categoryId);
   }, [typeFlg, categories]);
 
   // --- API送信処理 ---
@@ -40,37 +38,28 @@ function TransactionForm({ selectedDate, setTransactions }) {
     setIsSubmitting(true);
 
     const requestBody = {
-      category_id: categoryId,
+      categoryId: categoryId,
       date: selectedDate,
       amount: parseInt(amount, 10),
-      type: typeFlg
+      type: typeFlg // '0' or '1'
     };
 
     try {
-      const response = await fetch('/transaction', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-        credentials: 'include',
-      });
+      console.log("リクエスト", requestBody);
+      // api.post は Axios インスタンスと推測
+      const response = await api.post('/transaction', requestBody);
+      console.log("レスポンス", response);
 
-      if (!response.ok) {
-        console.log("レスポンス", response)
-        throw new Error('APIリクエストに失敗しました');
-      }
+      // Axiosの場合、response.data にサーバーからのレスポンスが入っています
+      const data = response.data; 
 
-      const data = await response.json();
-
-      // レスポンスに含まれる情報を元にローカルの状態を更新
-      // data: { response_status, transaction_id, category_id, date, amount }
-      if (data.response_status === 'success' || response.ok) {
+      // Axiosはステータス200系以外は catch に飛ぶので、ここは成功時の処理だけでOK
+      if (data.responseStatus === 'success') { // response_status ではなく camelCase に注意
         const newTransaction = {
-          id: data.transaction_id, // サーバーから発行されたID
+          id: data.transactionId,
           date: data.date,
           amount: data.amount,
-          category_id: data.category_id
+          category_id: data.categoryId
         };
 
         setTransactions(prev => [...prev, newTransaction]);
@@ -106,7 +95,7 @@ function TransactionForm({ selectedDate, setTransactions }) {
                   : 'text-gray-400'
               }`}
             >
-              {f === '0' ? '支出' : '収入'}
+              {f === '0' ? '収入' : '支出'}
             </button>
           ))}
         </div>
