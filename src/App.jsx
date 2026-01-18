@@ -96,10 +96,15 @@ function App() {
                   amount={amount} setAmount={setAmount}
                   categoryId={categoryId} setCategoryId={setCategoryId}
                   categories={categories} handleSubmitTransaction={handleSubmitTransaction}
+                  transactions={transactions}
                 />
               } />
               <Route path="/history" element={<History transactions={transactions} categories={categories} />} />
-              <Route path="/settings" element={<CategorySettings categories={categories} setCategories={setCategories} typeFlg={typeFlg} />} />
+              <Route path="/settings/:type" element={<CategorySettings 
+                categories={categories} 
+                setCategories={setCategories} 
+                typeFlg={typeFlg} 
+              />} />
               <Route path="/" element={<Navigate to="/calendar" />} />
             </>
           )}
