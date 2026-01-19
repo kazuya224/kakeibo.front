@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import CalendarView from './pages/CalendarView';
 import TransactionForm from './pages/TransactionForm';
 import CategorySettings from './pages/CategorySettings';
@@ -13,7 +13,7 @@ function App() {
   const [selectedDate, setSelectedDate] = useState('');
   const [transactions, setTransactions] = useState([]);
   const [amount, setAmount] = useState('');
-  const [typeFlg, setTypeFlg] = useState('0'); 
+  const [typeFlg, setTypeFlg] = useState('0');
   const [categoryId, setCategoryId] = useState('1');
   const [categories, setCategories] = useState([
     { category_id: '1', category_name: '食費', type_flg: '0' },
@@ -81,7 +81,7 @@ function App() {
             <>
               {/* ログイン後のルート */}
               <Route path="/calendar" element={
-                <CalendarView 
+                <CalendarView
                   currentDate={currentDate} setCurrentDate={setCurrentDate}
                   calendarDays={calendarDays} transactions={transactions}
                   categories={categories} monthlySummary={monthlySummary}
@@ -89,7 +89,7 @@ function App() {
                 />
               } />
               <Route path="/form" element={
-                <TransactionForm 
+                <TransactionForm
                   selectedDate={selectedDate} dailySummary={dailySummary}
                   setTransactions={setTransactions}
                   typeFlg={typeFlg} handleTypeChange={handleTypeChange}
@@ -99,11 +99,11 @@ function App() {
                   transactions={transactions}
                 />
               } />
-              <Route path="/history" element={<History transactions={transactions} categories={categories} />} />
-              <Route path="/settings/:type" element={<CategorySettings 
-                categories={categories} 
-                setCategories={setCategories} 
-                typeFlg={typeFlg} 
+              <Route path="/history" element={<History selectedDate={selectedDate} transactions={transactions} categories={categories} />} />
+              <Route path="/settings/:type" element={<CategorySettings
+                categories={categories}
+                setCategories={setCategories}
+                typeFlg={typeFlg}
               />} />
               <Route path="/" element={<Navigate to="/calendar" />} />
             </>
@@ -113,8 +113,25 @@ function App() {
         {/* ログイン時のみメニューを表示 */}
         {isLoggedIn && (
           <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-3 max-w-md mx-auto">
-            <Link to="/calendar" className="text-emerald-600 font-bold">カレンダー</Link>
-            <Link to="/history" className="text-slate-400">履歴</Link>
+            <NavLink
+              to="/calendar"
+              className={({ isActive }) =>
+                `flex-1 text-center font-bold py-2 transition-colors ${isActive ? 'text-emerald-600' : 'text-slate-400'
+                }`
+              }
+            >
+              カレンダー
+            </NavLink>
+
+            <NavLink
+              to="/history"
+              className={({ isActive }) =>
+                `flex-1 text-center font-bold py-2 transition-colors ${isActive ? 'text-emerald-600' : 'text-slate-400'
+                }`
+              }
+            >
+              履歴
+            </NavLink>
           </nav>
         )}
       </div>

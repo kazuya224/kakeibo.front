@@ -3,14 +3,11 @@ import SummaryCard from '../components/SummaryCard';
 import api from '../service/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-function TransactionForm({ selectedDate, setTransactions }) {
+function TransactionForm({ selectedDate, setTransactions, transactions }) {
   const navigate = useNavigate();
-  const location = useLocation();
 
   // APIから取得したデータを管理
   const [categories, setCategories] = useState([]);
-  // transactionsはlocation.stateにない場合、空配列を初期値にする
-  const transactions = location.state?.transactions || [];
 
   const [amount, setAmount] = useState('');
   const [typeFlg, setTypeFlg] = useState('0');
@@ -21,17 +18,22 @@ function TransactionForm({ selectedDate, setTransactions }) {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        // 設計書に基づき GET /kakeibo を実行
         const response = await api.get('/kakeibo');
         console.log("レスポンス", response);
 
-        // 設計書のレスポンス形式: { categories: [...], transactions: [...] }
-        if (response.data && response.data.categories) {
-          setCategories(response.data.categories);
+        if (response.data) {
+          // 1. カテゴリをセット
+          if (response.data.categories) {
+            setCategories(response.data.categories);
+            const firstCat = response.data.categories.find(c => String(c.type) === typeFlg);
+            if (firstCat) setCategoryId(firstCat.categoryId);
+          }
 
-          // 取得後、現在のtypeFlg(0:支出)に合う最初のカテゴリをデフォルト選択
-          const firstCat = response.data.categories.find(c => String(c.type) === typeFlg);
-          if (firstCat) setCategoryId(firstCat.categoryId);
+          // 2. 【重要】トランザクションをApp.js側のStateに同期
+          // これにより、Location.stateが空でも、APIから来た最新データでdailySummaryが計算される
+          if (response.data.transactions) {
+            setTransactions(response.data.transactions);
+          }
         }
       } catch (error) {
         console.error('データの取得に失敗しました:', error);
