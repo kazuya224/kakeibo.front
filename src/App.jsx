@@ -6,6 +6,7 @@ import CategorySettings from './pages/CategorySettings';
 import History from './pages/History';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import api from './service/api';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -66,6 +67,24 @@ function App() {
     // ここで遷移させる場合は useNavigate を使う（後述）
   };
 
+  const handleDeleteTransaction = async (id) => {
+    // 実装重視：まずは確認を入れる
+    if (!window.confirm('この履歴を削除してもよろしいですか？')) return;
+
+    try {
+      // API呼び出し（エンドポイントはバックエンドの設計に合わせて調整してください）
+      const response = await api.delete(`/transaction/${id}`);
+
+      if (response.data.response_status === 'success') {
+        // フロントエンドのStateも更新して、即座に画面から消す
+        setTransactions(prev => prev.filter(t => t.transactionId !== id));
+      }
+    } catch (error) {
+      console.error('削除に失敗しました:', error);
+      alert('削除中にエラーが発生しました');
+    }
+  };
+
   return (
     <Router>
       <div className="min-h-screen bg-slate-50 pb-20">
@@ -99,7 +118,7 @@ function App() {
                   transactions={transactions}
                 />
               } />
-              <Route path="/history" element={<History selectedDate={selectedDate} transactions={transactions} categories={categories} />} />
+              <Route path="/history" element={<History selectedDate={selectedDate} transactions={transactions} categories={categories} onDelete={handleDeleteTransaction} />} />
               <Route path="/settings/:type" element={<CategorySettings
                 categories={categories}
                 setCategories={setCategories}

@@ -1,9 +1,20 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function History({ selectedDate, transactions, categories }) {
+function History({ selectedDate, transactions, categories, onDelete }) {
   const navigate = useNavigate();
 
+  // 編集ボタン：既存のデータを state としてフォームに送る
+  const handleEdit = (t) => {
+    navigate('/form', { state: { editData: t } });
+  };
+
+  // 削除ボタン：App.js の関数を呼び出す
+  const handleDelete = (id) => {
+    if (window.confirm('この履歴を削除しますか？')) {
+      onDelete(id);
+    }
+  };
   const categoryMap = useMemo(() => {
     return categories.reduce((acc, cat) => {
       const id = cat.categoryId || cat.category_id;
@@ -52,19 +63,41 @@ function History({ selectedDate, transactions, categories }) {
           const isExpense = String(t.type || cat?.type) === '0';
 
           return (
-            <div key={t.transactionId} className="bg-white p-4 rounded-2xl shadow-sm flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="font-bold text-slate-700">
-                  {t.categoryName || cat?.name || '未分類'}
-                </span>
-                {t.memo && <span className="text-[10px] text-slate-400">{t.memo}</span>}
-              </div>
-              <div className="text-right">
-                <div className={`text-lg font-bold ${isExpense ? 'text-red-500' : 'text-blue-500'}`}>
-                  {isExpense ? '-' : '+'}¥{Number(t.amount).toLocaleString()}
+            /* 1. カード全体の親要素 */
+            <div key={t.transactionId} className="bg-white p-4 rounded-2xl shadow-sm flex flex-col gap-3">
+
+              {/* 2. 上段：カテゴリ名と金額の表示（既存の処理） */}
+              <div className="flex justify-between items-center">
+                <div className="flex flex-col">
+                  <span className="font-bold text-slate-700">
+                    {t.categoryName || cat?.name || '未分類'}
+                  </span>
+                  {t.memo && <span className="text-[10px] text-slate-400">{t.memo}</span>}
+                </div>
+                <div className="text-right">
+                  <div className={`text-lg font-bold ${isExpense ? 'text-red-500' : 'text-blue-500'}`}>
+                    {isExpense ? '-' : '+'}¥{Number(t.amount).toLocaleString()}
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {/* 3. 下段：編集・削除ボタン（ここを内側に入れる） */}
+              <div className="flex justify-end gap-4 pt-2 border-t border-slate-50">
+                <button
+                  onClick={() => handleEdit(t)}
+                  className="text-xs text-slate-400 hover:text-emerald-600 transition-colors"
+                >
+                  編集
+                </button>
+                <button
+                  onClick={() => handleDelete(t.transactionId)}
+                  className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  削除
+                </button>
+              </div>
+
+            </div> /* ここでカードの閉じタグ */
           );
         })}
 
